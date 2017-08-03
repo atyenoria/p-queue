@@ -2,13 +2,18 @@
 
 // Port of lower_bound from http://en.cppreference.com/w/cpp/algorithm/lower_bound
 // Used to compute insertion index to keep queue sorted after insertion
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
 function lowerBound(array, value, comp) {
-	let first = 0;
-	let count = array.length;
+	var first = 0;
+	var count = array.length;
 
 	while (count > 0) {
-		const step = (count / 2) | 0;
-		let it = first + step;
+		var step = count / 2 | 0;
+		var it = first + step;
 
 		if (comp(array[it], value) <= 0) {
 			first = ++it;
@@ -21,35 +26,51 @@ function lowerBound(array, value, comp) {
 	return first;
 }
 
-class PriorityQueue {
-	constructor() {
+var PriorityQueue = function () {
+	function PriorityQueue() {
+		_classCallCheck(this, PriorityQueue);
+
 		this._queue = [];
 	}
-	enqueue(run, opts) {
-		opts = Object.assign({
-			priority: 0
-		}, opts);
 
-		const element = {priority: opts.priority, run};
+	_createClass(PriorityQueue, [{
+		key: 'enqueue',
+		value: function enqueue(run, opts) {
+			opts = Object.assign({
+				priority: 0
+			}, opts);
 
-		if (this.size && this._queue[this.size - 1].priority >= opts.priority) {
-			this._queue.push(element);
-			return;
+			var element = { priority: opts.priority, run: run };
+
+			if (this.size && this._queue[this.size - 1].priority >= opts.priority) {
+				this._queue.push(element);
+				return;
+			}
+
+			var index = lowerBound(this._queue, element, function (a, b) {
+				return b.priority - a.priority;
+			});
+			this._queue.splice(index, 0, element);
 		}
+	}, {
+		key: 'dequeue',
+		value: function dequeue() {
+			return this._queue.shift().run;
+		}
+	}, {
+		key: 'size',
+		get: function get() {
+			return this._queue.length;
+		}
+	}]);
 
-		const index = lowerBound(this._queue, element, (a, b) => b.priority - a.priority);
-		this._queue.splice(index, 0, element);
-	}
-	dequeue() {
-		return this._queue.shift().run;
-	}
-	get size() {
-		return this._queue.length;
-	}
-}
+	return PriorityQueue;
+}();
 
-class PQueue {
-	constructor(opts) {
+var PQueue = function () {
+	function PQueue(opts) {
+		_classCallCheck(this, PQueue);
+
 		opts = Object.assign({
 			concurrency: Infinity,
 			queueClass: PriorityQueue
@@ -63,61 +84,76 @@ class PQueue {
 		this._queueClass = opts.queueClass;
 		this._pendingCount = 0;
 		this._concurrency = opts.concurrency;
-		this._resolveEmpty = () => {};
+		this._resolveEmpty = function () {};
 	}
-	_next() {
-		this._pendingCount--;
 
-		if (this.queue.size > 0) {
-			this.queue.dequeue()();
-		} else {
-			this._resolveEmpty();
-		}
-	}
-	add(fn, opts) {
-		return new Promise((resolve, reject) => {
-			const run = () => {
-				this._pendingCount++;
+	_createClass(PQueue, [{
+		key: '_next',
+		value: function _next() {
+			this._pendingCount--;
 
-				fn().then(
-					val => {
-						resolve(val);
-						this._next();
-					},
-					err => {
-						reject(err);
-						this._next();
-					}
-				);
-			};
-
-			if (this._pendingCount < this._concurrency) {
-				run();
+			if (this.queue.size > 0) {
+				this.queue.dequeue()();
 			} else {
-				this.queue.enqueue(run, opts);
+				this._resolveEmpty();
 			}
-		});
-	}
+		}
+	}, {
+		key: 'add',
+		value: function add(fn, opts) {
+			var _this = this;
 
-	clear() {
-		this.queue = new this._queueClass(); // eslint-disable-line new-cap
-	}
+			return new Promise(function (resolve, reject) {
+				var run = function run() {
+					_this._pendingCount++;
 
-	onEmpty() {
-		return new Promise(resolve => {
-			const existingResolve = this._resolveEmpty;
-			this._resolveEmpty = () => {
-				existingResolve();
-				resolve();
-			};
-		});
-	}
-	get size() {
-		return this.queue.size;
-	}
-	get pending() {
-		return this._pendingCount;
-	}
-}
+					fn().then(function (val) {
+						resolve(val);
+						_this._next();
+					}, function (err) {
+						reject(err);
+						_this._next();
+					});
+				};
+
+				if (_this._pendingCount < _this._concurrency) {
+					run();
+				} else {
+					_this.queue.enqueue(run, opts);
+				}
+			});
+		}
+	}, {
+		key: 'clear',
+		value: function clear() {
+			this.queue = new this._queueClass(); // eslint-disable-line new-cap
+		}
+	}, {
+		key: 'onEmpty',
+		value: function onEmpty() {
+			var _this2 = this;
+
+			return new Promise(function (resolve) {
+				var existingResolve = _this2._resolveEmpty;
+				_this2._resolveEmpty = function () {
+					existingResolve();
+					resolve();
+				};
+			});
+		}
+	}, {
+		key: 'size',
+		get: function get() {
+			return this.queue.size;
+		}
+	}, {
+		key: 'pending',
+		get: function get() {
+			return this._pendingCount;
+		}
+	}]);
+
+	return PQueue;
+}();
 
 module.exports = PQueue;
